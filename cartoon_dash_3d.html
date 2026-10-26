@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cartoon Hero Dash 3D</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        body {
+            background: #090d16;
+            color: #fff;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #game-wrapper {
+            position: relative;
+            width: 100vw;
+            max-width: 480px;
+            height: 100vh;
+            max-height: 850px;
+            background: #0f172a;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            border-radius: 16px;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        /* Top UI Header */
+        .hud-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .hud-card {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            padding: 10px 18px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        .hud-val {
+            font-size: 22px;
+            font-weight: 900;
+            color: #fbbf24;
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        .hud-label {
+            font-size: 13px;
+            color: #cbd5e1;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        /* Combo Popup Overlay */
+        #combo-popup {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.5);
+            font-size: 32px;
+            font-weight: 900;
+            color: #ec4899;
+            text-shadow: 0 0 20px rgba(236, 72, 153, 0.8), 2px 2px 0 #000;
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.25s ease;
+            z-index: 15;
+            white-space: nowrap;
+        }
+        #combo-popup.active {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.2);
+        }
+
+        /* End Game Screen */
+        .overlay-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 30;
+            padding: 24px;
+            text-align: center;
+            transition: opacity 0.3s ease;
+        }
+        .overlay-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .game-title {
+            font-size: 40px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #f43f5e, #fbbf24);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+            filter: drop-shadow(0 4px 10px rgba(244, 63, 94, 0.4));
+        }
+        .score-box {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 20px 30px;
+            margin: 20px 0 30px 0;
+            width: 80%;
+        }
+        .score-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 18px;
+            color: #e2e8f0;
+        }
+        .score-num {
+            font-weight: 800;
+            color: #38bdf8;
+        }
+        .btn-play {
+            padding: 18px 48px;
+            font-size: 22px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: #fff;
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(6, 182, 212, 0.5), inset 0 2px 0 rgba(255,255,255,0.4);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            letter-spacing: 1px;
+        }
+        .btn-play:active {
+            transform: scale(0.94);
+            box-shadow: 0 5px 12px rgba(6, 182, 212, 0.4);
+        }
+        .touch-hint {
+            position: absolute;
+            bottom: 30px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+            text-align: center;
+            width: 100%;
+            pointer-events: none;
+            z-index: 5;
+            animation: bounceHint 2s infinite ease-in-out;
+        }
+        @keyframes bounceHint {
+            0%, 100% { transform: translateY(0); opacity: 0.6; }
+            50% { transform: translateY(-6px); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-wrapper">
+        <!-- HUD -->
+        <div class="hud-overlay">
+            <div class="hud-card">
+                <span class="hud-label">خاڵ</span>
+                <span class="hud-val" id="hudScore">0</span>
+            </div>
+            <div class="hud-card">
+                <span style="font-size: 20px;">💎</span>
+                <span class="hud-val" id="hudGems">0</span>
+            </div>
+        </div>
+
+        <!-- Combo text animation -->
+        <div id="combo-popup">+100 COMBO!</div>
+
+        <!-- End Game Screen -->
+        <div id="gameOverScreen" class="overlay-screen hidden">
+            <h1 class="game-title">یاری ب دوماهی هات!</h1>
+            <p style="color: #94a3b8; font-size: 16px;">مەیاندنا تە یا سەرسوڕهێنەر بوو</p>
+
+            <div class="score-box">
+                <div class="score-row">
+                    <span>کۆی خاڵان:</span>
+                    <span class="score-num" id="finalScore">0</span>
+                </div>
+                <div class="score-row">
+                    <span>گووهرێن کۆمکری:</span>
+                    <span class="score-num" id="finalGems" style="color: #f43f5e;">0</span>
+                </div>
+                <div class="score-row">
+                    <span>بەرزترین تۆمار:</span>
+                    <span class="score-num" id="highScore" style="color: #fbbf24;">0</span>
+                </div>
+            </div>
+
+            <button class="btn-play" onclick="restartGame()">دووبارە یاری بکە</button>
+        </div>
+
+        <!-- Touch Hint -->
+        <div class="touch-hint" id="touchHint">لەلایەک بۆ لایەکێ دی ببهۆڕە ◀ ▶ | دووجار کلیک بکە بۆ بازدانا دووانە 🔼</div>
+
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <script>
+        // --- Core Setup & Canvas Initialization ---
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const wrapper = document.getElementById("game-wrapper");
+        let W = wrapper.clientWidth;
+        let H = wrapper.clientHeight;
+        canvas.width = W;
+        canvas.height = H;
+
+        window.addEventListener("resize", () => {
+            W = wrapper.clientWidth;
+            H = wrapper.clientHeight;
+            canvas.width = W;
+            canvas.height = H;
+        });
+
+        // Audio Synth Placeholders (Pure Tone Sound FX Generator)
+        const AudioFX = {
+            ctx: null,
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+            },
+            playJump() {
+                if (!this.ctx) return;
+                try {
+                    let osc = this.ctx.createOscillator();
+                    let gain = this.ctx.createGain();
+                    osc.type = "sine";
+                    osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(700, this.ctx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.15);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.15);
+                } catch(e) {}
+            },
+            playGem() {
+                if (!this.ctx) return;
+                try {
+                    let osc = this.ctx.createOscillator();
+                    let gain = this.ctx.createGain();
+                    osc.type = "triangle";
+                    osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(1400, this.ctx.currentTime + 0.12);
+                    gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.12);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.12);
+                } catch(e) {}
+            },
+            playHit() {
+                if (!this.ctx) return;
+                try {
+                    let osc = this.ctx.createOscillator();
+                    let gain = this.ctx.createGain();
+                    osc.type = "sawtooth";
+                    osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.3);
+                    gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.3);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.3);
+                } catch(e) {}
+            }
+        };
+
+        // --- Game Logic Variables ---
+        let isRunning = true;
+        let score = 0;
+        let gems = 0;
+        let highScore = localStorage.getItem("dash_high_score") || 0;
+        let speed = 14;
+        let frame = 0;
+        let cameraShake = 0;
+
+        // 3D Perspective Projection Helpers
+        const horizonY = 280;
+        const laneXOffset = [ -120, 0, 120 ];
+        let currentLane = 1; // 0: Left, 1: Center, 2: Right
+
+        // Hero Player Properties
+        const player = {
+            lane: 1,
+            x: 0,
+            y: 0,
+            targetX: 0,
+            jumpY: 0,
+            jumpVel: 0,
+            gravity: 1.1,
+            isJumping: false,
+            jumpCount: 0,
+            maxJumps: 2,
+            trail: []
+        };
+
+        // Entities Arrays
+        let obstacles = [];
+        let collectibleGems = [];
+        let particles = [];
+        let floatingIslands = [];
+
+        // Initialize Background Decorative Floating Islands
+        for (let i = 0; i < 5; i++) {
+            floatingIslands.push({
+                x: (Math.random() - 0.5) * 600,
+                y: 80 + Math.random() * 120,
+                z: 400 + i * 300,
+                size: 30 + Math.random() * 40
+            });
+        }
+
+        // --- Touch Gesture Controls (Swipe & Tap) ---
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTime = 0;
+
+        window.addEventListener("touchstart", (e) => {
+            AudioFX.init();
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            touchStartTime = Date.now();
+        }, { passive: true });
+
+        window.addEventListener("touchend", (e) => {
+            let touchEndX = e.changedTouches[0].clientX;
+            let touchEndY = e.changedTouches[0].clientY;
+            let dx = touchEndX - touchStartX;
+            let dy = touchEndY - touchStartY;
+            let duration = Date.now() - touchStartTime;
+
+            // Swipe Detection
+            if (Math.abs(dx) > 35 && Math.abs(dx) > Math.abs(dy)) {
+                if (dx > 0 && currentLane < 2) {
+                    currentLane++;
+                } else if (dx < 0 && currentLane > 0) {
+                    currentLane--;
+                }
+            } else if (dy < -35 || duration < 200) {
+                // Swipe Up or Tap to Jump
+                performJump();
+            }
+        });
+
+        // Keyboard Controls
+        window.addEventListener("keydown", (e) => {
+            AudioFX.init();
+            if ((e.code === "ArrowLeft" || e.code === "KeyA") && currentLane > 0) currentLane--;
+            if ((e.code === "ArrowRight" || e.code === "KeyD") && currentLane < 2) currentLane++;
+            if (e.code === "ArrowUp" || e.code === "Space" || e.code === "KeyW") performJump();
+        });
+
+        function performJump() {
+            if (player.jumpCount < player.maxJumps) {
+                player.jumpVel = -17;
+                player.isJumping = true;
+                player.jumpCount++;
+                AudioFX.playJump();
+                createParticles(player.x, H - 120 + player.jumpY, "#06b6d4", 12);
+                if (player.jumpCount === 2) {
+                    triggerComboPopup("DOUBLE JUMP!");
+                }
+            }
+        }
+
+        function triggerComboPopup(text) {
+            const popup = document.getElementById("combo-popup");
+            popup.innerText = text;
+            popup.classList.add("active");
+            setTimeout(() => popup.classList.remove("active"), 600);
+        }
+
+        // Spawn Entities Logic
+        function spawnObstacle() {
+            const lane = Math.floor(Math.random() * 3);
+            const types = ['laser', 'crate', 'spike'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            obstacles.push({
+                lane: lane,
+                z: 1200,
+                type: type,
+                pulse: 0
+            });
+        }
+
+        function spawnGemPattern() {
+            const lane = Math.floor(Math.random() * 3);
+            const count = 3 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < count; i++) {
+                collectibleGems.push({
+                    lane: lane,
+                    z: 1200 + i * 140,
+                    collected: false,
+                    rot: Math.random() * Math.PI
+                });
+            }
+        }
+
+        function createParticles(x, y, color, count = 8) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8 - 2,
+                    radius: Math.random() * 5 + 2,
+                    color: color,
+                    alpha: 1
+                });
+            }
+        }
+
+        // --- Game Update Loop ---
+        function update() {
+            if (!isRunning) return;
+
+            frame++;
+            score += 1;
+            document.getElementById("hudScore").innerText = Math.floor(score / 4);
+
+            // Gradual Speed Scaling
+            if (frame % 300 === 0 && speed < 28) {
+                speed += 0.75;
+            }
+
+            // Smooth Lane Transition Interpolation
+            player.targetX = laneXOffset[currentLane];
+            player.x += (player.targetX - player.x) * 0.22;
+
+            // Player Jump Physics
+            if (player.isJumping || player.jumpY < 0) {
+                player.jumpY += player.jumpVel;
+                player.jumpVel += player.gravity;
+
+                if (player.jumpY >= 0) {
+                    player.jumpY = 0;
+                    player.isJumping = false;
+                    player.jumpCount = 0;
+                    cameraShake = 4; // Impact shake
+                }
+            }
+
+            // Player Motion Trail Recording
+            if (frame % 2 === 0) {
+                player.trail.push({ x: player.x, y: player.jumpY, alpha: 0.6 });
+                if (player.trail.length > 6) player.trail.shift();
+            }
+
+            // Spawn Cycle
+            if (frame % Math.max(30, 90 - Math.floor(speed * 2)) === 0) {
+                spawnObstacle();
+            }
+            if (frame % 110 === 0) {
+                spawnGemPattern();
+            }
+
+            // Update Background Islands
+            floatingIslands.forEach(island => {
+                island.z -= speed * 0.4;
+                if (island.z < -100) {
+                    island.z = 1400;
+                    island.x = (Math.random() - 0.5) * 700;
+                }
+            });
+
+            // Update Obstacles & Collision Check
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                let obs = obstacles[i];
+                obs.z -= speed * 12;
+                obs.pulse += 0.08;
+
+                // 3D Collision Hitbox Verification
+                if (obs.z > 20 && obs.z < 120 && obs.lane === currentLane) {
+                    let hit = false;
+                    if (obs.type === 'crate' || obs.type === 'spike') {
+                        if (player.jumpY > -50) hit = true;
+                    } else if (obs.type === 'laser') {
+                        if (player.jumpY > -80) hit = true;
+                    }
+
+                    if (hit) {
+                        AudioFX.playHit();
+                        gameOver();
+                        return;
+                    }
+                }
+
+                if (obs.z < -
